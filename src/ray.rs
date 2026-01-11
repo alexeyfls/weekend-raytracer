@@ -12,7 +12,7 @@ impl Ray {
         Self { origin, direction }
     }
 
-    pub fn point_at(self, t: f32) -> uv::Vec3 {
+    pub fn point_at(&self, t: f32) -> uv::Vec3 {
         self.direction.mul_add(uv::Vec3::new(t, t, t), self.origin)
     }
 }

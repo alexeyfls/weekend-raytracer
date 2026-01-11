@@ -1,54 +1,71 @@
+use image;
+use ray::Ray;
+use std::{env, fs, path::Path};
 use ultraviolet::{self as uv, Lerp};
 
-use ray::Ray;
+use crate::{
+    color::Color,
+    hitable::{Hitable, HitableList},
+    sphere::Sphere,
+};
 
+mod color;
+mod hitable;
 mod ray;
+mod sphere;
 
-fn hit_sphere(center: uv::Vec3, radius: f32, ray: &Ray) -> bool {
-    let oc = ray.origin - center;
-    let a = ray.direction.dot(ray.direction.clone());
-    let b = 2.0 * oc.clone().dot(ray.direction.clone());
-    let c = oc.clone().dot(oc) - radius * radius;
-    let discriminant = b * b - 4.0 * a * c;
+const DIMENSION: (f32, f32) = (960.0, 540.0);
 
-    discriminant > 0.0
-}
+fn compute_color(ray: &Ray, world: &HitableList) -> Color {
+    if let Some(record) = world.hit(ray, 0.0..100.0) {
+        Color(uv::Vec3::broadcast(0.5) * (uv::Vec3::one() + record.n))
+    } else {
+        let mut dir = ray.direction.clone();
+        dir.normalize();
+        let t = 0.5 * (dir.y + 1.0);
 
-fn color(ray: Ray) -> uv::Vec3 {
-    if hit_sphere(uv::Vec3::new(0.0, 0.0, -1.0), 0.5, &ray) {
-        return uv::Vec3::new(1.0, 0.0, 0.0);
+        Color(uv::Vec3::lerp(
+            &uv::Vec3::one(),
+            uv::Vec3::new(0.5, 0.7, 1.0),
+            t,
+        ))
     }
-
-    let normalized_dir = ray.direction.clone().normalized();
-    let t = 0.5 * (normalized_dir.y + 1.0);
-
-    uv::Vec3::one().lerp(uv::Vec3::new(0.5, 0.7, 1.0), t)
 }
 
 fn main() {
-    const IMAGE_WIDTH: i32 = 256;
-    const IMAGE_HEIGHT: i32 = 256;
+    let args: Vec<String> = env::args().collect();
 
-    println!("P3\n{} {}\n255", IMAGE_WIDTH, IMAGE_HEIGHT);
+    let mut image = image::RgbImage::new(DIMENSION.0 as u32, DIMENSION.1 as u32);
 
-    let lower_left_corner = uv::Vec3::new(-1.0, -1.0, -1.0);
-    let horizontal = uv::Vec3::new(2.0, 0.0, 0.0);
-    let vertical = uv::Vec3::new(0.0, 2.0, 0.0);
+    let top_left = uv::Vec3::new(-DIMENSION.0 / DIMENSION.1, 1.0, -1.0);
+    let view_full = uv::Vec3::new(DIMENSION.0 / DIMENSION.1 * 2.0, -2.0, 0.0);
     let origin = uv::Vec3::new(0.0, 0.0, 0.0);
 
-    for j in (0..IMAGE_HEIGHT).rev() {
-        for i in 0..IMAGE_WIDTH {
-            let u = i as f32 / IMAGE_WIDTH as f32;
-            let v = j as f32 / IMAGE_HEIGHT as f32;
+    let mut world = HitableList::new();
+    world.push(Box::new(Sphere::new(
+        uv::Vec3::new(0.0, -100.5, -1.0),
+        100.0,
+    )));
+    world.push(Box::new(Sphere::new(uv::Vec3::new(0.0, 0.0, -1.0), 0.5)));
 
-            let ray = Ray::new(origin, lower_left_corner + u * horizontal + v * vertical);
-            let c = color(ray);
-
-            let ir = (255.99 * c.x) as u8;
-            let ig = (255.99 * c.y) as u8;
-            let ib = (255.99 * c.z) as u8;
-
-            println!("{} {} {}", ir, ig, ib);
-        }
+    for (x, y, pixel) in image.enumerate_pixels_mut() {
+        let uv = uv::Vec3::new(
+            x as f32 / DIMENSION.0 as f32,
+            y as f32 / DIMENSION.1 as f32,
+            0.0,
+        );
+        let ray = Ray::new(origin.clone(), top_left + (view_full * uv));
+        let col = compute_color(&ray, &world);
+        *pixel = col.into();
     }
+
+    let save_path = Path::new("./renders").join(&args[1]).with_extension("png");
+
+    if let Some(parent) = save_path.parent() {
+        fs::create_dir_all(parent).expect("Failed to create render directory");
+    }
+
+    println!("{:#?}", &save_path);
+
+    image.save(&save_path).expect("Failed to save image");
 }
