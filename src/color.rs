@@ -1,5 +1,5 @@
 use image;
-use std::ops::{Add, Div};
+use std::ops::{Add, Div, Mul};
 use ultraviolet as uv;
 
 #[derive(Clone, Copy, Debug)]
@@ -24,15 +24,23 @@ impl From<Color> for image::Rgb<u8> {
 impl Add for Color {
     type Output = Color;
 
-    fn add(self, other: Color) -> Color {
-        Color(self.0 + other.0)
+    fn add(self, rhs: Color) -> Color {
+        Color(self.0 + rhs.0)
     }
 }
 
 impl Div<f32> for Color {
     type Output = Color;
 
-    fn div(self, other: f32) -> Color {
-        Color(self.0 / other)
+    fn div(self, rhs: f32) -> Color {
+        Color(self.0 / rhs)
+    }
+}
+
+impl Mul<f32> for Color {
+    type Output = Color;
+
+    fn mul(self, rhs: f32) -> Color {
+        Color(self.0 * rhs)
     }
 }

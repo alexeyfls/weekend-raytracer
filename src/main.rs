@@ -1,8 +1,8 @@
 use image;
-use rand::prelude::*;
+use rand::{distr::Uniform, prelude::*};
 use ray::Ray;
 use rayon::prelude::*;
-use std::{env, fs, path::Path};
+use std::{env, f32::consts::PI, fs, path::Path};
 use ultraviolet::{self as uv, Lerp};
 
 use crate::{
@@ -20,14 +20,34 @@ mod sphere;
 
 const DIMENSION: (u32, u32) = (1920, 1080);
 
-const SAMPLES: usize = 48;
+const SAMPLES: usize = 64;
 
-fn compute_color(ray: &Ray, world: &HitableList) -> Color {
+const MAX_BOUNCES: usize = 5;
+
+pub trait RandomInit {
+    fn rand(rng: &mut ThreadRng) -> Self;
+}
+
+impl RandomInit for uv::Vec3 {
+    fn rand(rng: &mut ThreadRng) -> Self {
+        let theta = rng.random_range(0.0..2.0 * PI);
+        let phi = rng.random_range(-1.0..1.0);
+        let ophisq = ((1.0 - phi * phi) as f32).sqrt();
+        uv::Vec3::new(ophisq * theta.cos(), ophisq * theta.sin(), phi)
+    }
+}
+
+fn compute_color(ray: &Ray, world: &HitableList, rng: &mut ThreadRng, bounces: usize) -> Color {
+    if bounces >= MAX_BOUNCES {
+        return Color::zero();
+    }
+
     if let Some(record) = world.hit(ray, 0.0..100.0) {
-        Color(uv::Vec3::broadcast(0.5) * (uv::Vec3::one() + record.n))
+        let bounce: ultraviolet::Vec3 = record.n + uv::Vec3::rand(rng);
+
+        compute_color(&Ray::new(record.p, bounce), world, rng, bounces + 1) * 0.5
     } else {
-        let mut dir = ray.direction.clone();
-        dir.normalize();
+        let dir = ray.direction.clone().normalized();
         let t = 0.5 * (dir.y + 1.0);
 
         Color(uv::Vec3::lerp(
@@ -63,13 +83,16 @@ fn main() {
         let color = (0..SAMPLES)
             .into_iter()
             .map(|_| {
-                let mut rng = rand::rng();
+                let mut rng: ThreadRng = rand::rng();
+                let uniform = Uniform::new(0.0, 1.0).unwrap();
+                let (r1, r2) = (uniform.sample(&mut rng), uniform.sample(&mut rng));
                 let uv = uv::Vec3::new(
-                    (x as f32 + rng.random::<f32>()) / DIMENSION.0 as f32,
-                    (y as f32 + rng.random::<f32>()) / DIMENSION.1 as f32,
+                    (x as f32 + r1) / DIMENSION.0 as f32,
+                    (y as f32 + r2) / DIMENSION.1 as f32,
                     0.0,
                 );
-                compute_color(&camera.get_ray(uv), &world)
+
+                compute_color(&camera.get_ray(uv), &world, &mut rng, 0)
             })
             .fold(Color::zero(), |a, b| a + b);
         *p = color / SAMPLES as f32;
