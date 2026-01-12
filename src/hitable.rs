@@ -19,20 +19,20 @@ pub trait Hitable {
     fn hit(&self, ray: &Ray, t_range: Range<f32>) -> Option<HitRecord>;
 }
 
-pub struct HitableList(Vec<Box<dyn Hitable>>);
+pub struct HitableList(Vec<Box<dyn Hitable + Send + Sync>>);
 
 impl HitableList {
     pub fn new() -> Self {
         Self(Vec::new())
     }
 
-    pub fn push(&mut self, hitable: Box<dyn Hitable>) {
+    pub fn push(&mut self, hitable: Box<dyn Hitable + Send + Sync>) {
         self.0.push(hitable)
     }
 }
 
 impl Deref for HitableList {
-    type Target = Vec<Box<dyn Hitable>>;
+    type Target = Vec<Box<dyn Hitable + Send + Sync>>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
