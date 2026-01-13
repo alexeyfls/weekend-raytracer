@@ -42,20 +42,19 @@ fn compute_color(ray: &Ray, world: &HitableList, rng: &mut ThreadRng, bounces: u
         return Color::zero();
     }
 
-    if let Some(record) = world.hit(ray, 0.0..100.0) {
+    if let Some(record) = world.hit(ray, 0.001..100.0) {
         let bounce: ultraviolet::Vec3 = record.n + uv::Vec3::rand(rng);
-
-        compute_color(&Ray::new(record.p, bounce), world, rng, bounces + 1) * 0.5
-    } else {
-        let dir = ray.direction.clone().normalized();
-        let t = 0.5 * (dir.y + 1.0);
-
-        Color(uv::Vec3::lerp(
-            &uv::Vec3::one(),
-            uv::Vec3::new(0.5, 0.7, 1.0),
-            t,
-        ))
+        return compute_color(&Ray::new(record.p, bounce), world, rng, bounces + 1) * 0.5;
     }
+
+    let dir = ray.direction.clone().normalized();
+    let t = 0.5 * (dir.y + 1.0);
+
+    Color(uv::Vec3::lerp(
+        &uv::Vec3::one(),
+        uv::Vec3::new(0.5, 0.7, 1.0),
+        t,
+    ))
 }
 
 fn main() {
@@ -102,7 +101,7 @@ fn main() {
 
     for (x, y, pixel) in image.enumerate_pixels_mut() {
         let idx = x + (DIMENSION.1 - 1 - y) * DIMENSION.0;
-        *pixel = pixels[idx as usize].into();
+        *pixel = pixels[idx as usize].gamma_correct(2.0).into();
     }
 
     image.save(&save_path).expect("Failed to save image");

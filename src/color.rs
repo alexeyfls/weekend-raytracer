@@ -9,6 +9,14 @@ impl Color {
     pub fn zero() -> Self {
         Self(uv::Vec3::zero())
     }
+
+    pub fn gamma_correct(self, gamma: f32) -> Self {
+        Color(uv::Vec3::new(
+            self.0.x.powf(1.0 / gamma),
+            self.0.y.powf(1.0 / gamma),
+            self.0.z.powf(1.0 / gamma),
+        ))
+    }
 }
 
 impl From<Color> for image::Rgb<u8> {
