@@ -11,9 +11,9 @@ pub struct Camera {
 impl Camera {
     pub fn new(aspect_ratio: f32) -> Self {
         Camera {
-            lower_left: uv::Vec3::new(-aspect_ratio, -1.0, -1.0),
-            full_size: uv::Vec3::new(aspect_ratio * 2.0, 2.0, 0.0),
-            origin: uv::Vec3::zero(),
+            lower_left: uv::Vec3::new(-aspect_ratio * 0.5, -0.5, -1.0),
+            full_size: uv::Vec3::new(aspect_ratio, 1.0, 0.0),
+            origin: uv::Vec3::new(0.0, 0.0, 1.0),
         }
     }
 

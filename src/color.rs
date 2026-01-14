@@ -6,6 +6,10 @@ use ultraviolet as uv;
 pub struct Color(pub uv::Vec3);
 
 impl Color {
+    pub fn new(r: f32, g: f32, b: f32) -> Self {
+        Self(uv::Vec3::new(r, g, b))
+    }
+
     pub fn zero() -> Self {
         Self(uv::Vec3::zero())
     }
@@ -50,5 +54,13 @@ impl Mul<f32> for Color {
 
     fn mul(self, rhs: f32) -> Color {
         Color(self.0 * rhs)
+    }
+}
+
+impl Mul<Color> for Color {
+    type Output = Color;
+
+    fn mul(self, rhs: Color) -> Color {
+        Color(self.0 * rhs.0)
     }
 }

@@ -1,14 +1,22 @@
-use crate::hitable::{HitRecord, Hitable};
+use crate::{
+    hitable::{HitRecord, Hitable},
+    material::Material,
+};
 use ultraviolet::{self as uv};
 
 pub struct Sphere {
     center: uv::Vec3,
     radius: f32,
+    material: Material,
 }
 
 impl Sphere {
-    pub fn new(center: uv::Vec3, radius: f32) -> Self {
-        Self { center, radius }
+    pub fn new(center: uv::Vec3, radius: f32, material: Material) -> Self {
+        Self {
+            center,
+            radius,
+            material,
+        }
     }
 }
 
@@ -27,7 +35,7 @@ impl Hitable for Sphere {
                 let p = ray.point_at(t);
                 let n = (p - self.center) / self.radius;
 
-                return Some(HitRecord::new(t, p, n));
+                return Some(HitRecord::new(t, p, n, self.material));
             }
 
             t = (-b + discriminant.sqrt()) / a;
@@ -36,7 +44,7 @@ impl Hitable for Sphere {
                 let p = ray.point_at(t);
                 let n = (p - self.center) / self.radius;
 
-                return Some(HitRecord::new(t, p, n));
+                return Some(HitRecord::new(t, p, n, self.material));
             }
         }
 

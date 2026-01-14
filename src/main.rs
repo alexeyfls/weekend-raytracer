@@ -1,20 +1,28 @@
 use image;
 use rand::{distr::Uniform, prelude::*};
-use ray::Ray;
 use rayon::prelude::*;
-use std::{env, f32::consts::PI, fs, path::Path};
+use std::{
+    env,
+    f32::consts::PI,
+    fs, io,
+    path::{Path, PathBuf},
+};
 use ultraviolet::{self as uv, Lerp};
 
 use crate::{
     camera::Camera,
     color::Color,
     hitable::{Hitable, HitableList},
+    material::{Diffuse, Metal, Scatterable},
+    ray::Ray,
     sphere::Sphere,
 };
 
 mod camera;
 mod color;
 mod hitable;
+mod material;
+mod math;
 mod ray;
 mod sphere;
 
@@ -43,8 +51,13 @@ fn compute_color(ray: &Ray, world: &HitableList, rng: &mut ThreadRng, bounces: u
     }
 
     if let Some(record) = world.hit(ray, 0.001..100.0) {
-        let bounce: ultraviolet::Vec3 = record.n + uv::Vec3::rand(rng);
-        return compute_color(&Ray::new(record.p, bounce), world, rng, bounces + 1) * 0.5;
+        let scatter = record.material.scatter(ray, &record, rng);
+        if let Some((attenuation, bounce)) = scatter {
+            return compute_color(&Ray::new(record.point, bounce), world, rng, bounces + 1)
+                * attenuation;
+        }
+
+        return Color::zero();
     }
 
     let dir = ray.direction.clone().normalized();
@@ -57,32 +70,63 @@ fn compute_color(ray: &Ray, world: &HitableList, rng: &mut ThreadRng, bounces: u
     ))
 }
 
-fn main() {
-    let args: Vec<String> = env::args().collect();
-    let save_path = Path::new("./renders").join(&args[1]).with_extension("png");
+fn resolve_save_to_path() -> io::Result<PathBuf> {
+    let filename = env::args()
+        .nth(1)
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "Missing filename argument"))?;
+
+    let save_path = Path::new("./renders").join(filename).with_extension("png");
 
     if let Some(parent) = save_path.parent() {
-        fs::create_dir_all(parent).expect("Failed to create render directory");
+        fs::create_dir_all(parent)?;
     }
+
+    Ok(save_path)
+}
+
+fn main() -> Result<(), io::Error> {
+    let save_path = resolve_save_to_path()?;
 
     let camera = Camera::new(DIMENSION.0 as f32 / DIMENSION.1 as f32);
 
+    let pink_diffuse = Diffuse::new(Color::new(0.7, 0.3, 0.4), 0.0);
+    let ground = Diffuse::new(Color::new(0.35, 0.3, 0.45), 0.2);
+    let gold = Metal::new(Color::new(1.0, 0.9, 0.5), 0.0);
+    let gold_rough = Metal::new(Color::new(1.0, 0.9, 0.5), 0.2);
+
     let mut world = HitableList::new();
+
     world.push(Box::new(Sphere::new(
-        uv::Vec3::new(0.0, -100.5, -1.0),
-        100.0,
+        uv::Vec3::new(0.0, -200.5, -1.0),
+        200.0,
+        ground.into(),
     )));
-    world.push(Box::new(Sphere::new(uv::Vec3::new(0.0, 0.0, -1.0), 0.5)));
+    world.push(Box::new(Sphere::new(
+        uv::Vec3::new(-1.0, 0.0, -1.0),
+        0.5,
+        pink_diffuse.into(),
+    )));
+    world.push(Box::new(Sphere::new(
+        uv::Vec3::new(1.0, -0.25, -1.0),
+        0.25,
+        gold.into(),
+    )));
+    world.push(Box::new(Sphere::new(
+        uv::Vec3::new(-0.5, -0.375, -0.5),
+        0.125,
+        gold_rough.into(),
+    )));
 
     let mut pixels = vec![Color::zero(); DIMENSION.0 as usize * DIMENSION.1 as usize];
 
     pixels.par_iter_mut().enumerate().for_each(|(i, p)| {
+        let mut rng: ThreadRng = rand::rng();
+
         let x = i % DIMENSION.0 as usize;
         let y = (i - x) / DIMENSION.0 as usize;
         let color = (0..SAMPLES)
             .into_iter()
             .map(|_| {
-                let mut rng: ThreadRng = rand::rng();
                 let uniform = Uniform::new(0.0, 1.0).unwrap();
                 let (r1, r2) = (uniform.sample(&mut rng), uniform.sample(&mut rng));
                 let uv = uv::Vec3::new(
@@ -105,4 +149,6 @@ fn main() {
     }
 
     image.save(&save_path).expect("Failed to save image");
+
+    Ok(())
 }

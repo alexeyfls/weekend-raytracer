@@ -1,38 +1,44 @@
-use crate::ray::Ray;
+use crate::{material::Material, ray::Ray};
 use std::ops::{Deref, Range};
 use ultraviolet as uv;
 
 #[allow(dead_code)]
 pub struct HitRecord {
     pub t: f32,
-    pub p: uv::Vec3,
-    pub n: uv::Vec3,
+    pub point: uv::Vec3,
+    pub normal: uv::Vec3,
+    pub material: Material,
 }
 
 impl HitRecord {
-    pub fn new(t: f32, p: uv::Vec3, n: uv::Vec3) -> Self {
-        Self { t, p, n }
+    pub fn new(t: f32, point: uv::Vec3, normal: uv::Vec3, material: Material) -> Self {
+        Self {
+            t,
+            point,
+            normal,
+            material,
+        }
     }
 }
 
-pub trait Hitable {
+pub trait Hitable: Send + Sync {
     fn hit(&self, ray: &Ray, t_range: Range<f32>) -> Option<HitRecord>;
 }
 
-pub struct HitableList(Vec<Box<dyn Hitable + Send + Sync>>);
+pub struct HitableList(Vec<Box<dyn Hitable>>);
 
 impl HitableList {
     pub fn new() -> Self {
         Self(Vec::new())
     }
 
-    pub fn push(&mut self, hitable: Box<dyn Hitable + Send + Sync>) {
+    pub fn push(&mut self, hitable: Box<dyn Hitable>) {
         self.0.push(hitable)
     }
 }
 
 impl Deref for HitableList {
-    type Target = Vec<Box<dyn Hitable + Send + Sync>>;
+    type Target = Vec<Box<dyn Hitable>>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
