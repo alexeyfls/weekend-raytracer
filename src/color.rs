@@ -1,4 +1,5 @@
 use image;
+use rand::Rng;
 use std::ops::{Add, Div, Mul};
 use ultraviolet as uv;
 
@@ -10,7 +11,7 @@ impl Color {
         Self(uv::Vec3::new(r, g, b))
     }
 
-    pub fn zero() -> Self {
+    pub fn black() -> Self {
         Self(uv::Vec3::zero())
     }
 
@@ -20,6 +21,16 @@ impl Color {
             self.0.y.powf(1.0 / gamma),
             self.0.z.powf(1.0 / gamma),
         ))
+    }
+
+    pub fn random() -> Self {
+        let mut rng = rand::rng();
+
+        Color::new(
+            rng.random_range(0.0..255.9),
+            rng.random_range(0.0..255.9),
+            rng.random_range(0.0..255.9),
+        )
     }
 }
 

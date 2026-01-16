@@ -1,10 +1,10 @@
 use crate::Color;
 use ultraviolet as uv;
 
-// pub fn f0_from_ior(ior: f32) -> f32 {
-//     let f0 = (1.0 - ior) / (1.0 + ior);
-//     f0 * f0
-// }
+pub fn f0_from_ior(ior: f32) -> f32 {
+    let f0 = (1.0 - ior) / (1.0 + ior);
+    f0 * f0
+}
 
 pub fn f_schlick(cos: f32, f0: f32) -> f32 {
     f0 + (1.0 - f0) * (1.0 - cos).powi(5)
