@@ -1,4 +1,4 @@
-![image](renders/wallpaper.png)
+![image](renders/full_scene.png)
 
 # weekend-raytracer
 
